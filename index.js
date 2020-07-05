@@ -29,15 +29,12 @@ const getInputBool = (name, defaultValue = false) => {
 
 const restoreCachedNpm = npmCache => {
   console.log('trying to restore cached NPM modules')
-  return cache.restoreCache(
-    npmCache.inputPath,
-    npmCache.primaryKey
-  )
+  return cache.restoreCache([npmCache.inputPath], npmCache.primaryKey)
 }
 
 const saveCachedNpm = npmCache => {
   console.log('saving NPM modules')
-  return cache.saveCache(npmCache.inputPath, npmCache.primaryKey)
+  return cache.saveCache([npmCache.inputPath], npmCache.primaryKey)
 }
 
 const hasOption = (name, o) => name in o
@@ -121,7 +118,7 @@ const getLockFilename = usePackageLock => workingDirectory => {
   return result
 }
 
-let _resolvedCacheFolder = '';
+let _resolvedCacheFolder = ''
 
 const getYarnCacheFolder = ({ homeDirectory }) => {
   if (_resolvedCacheFolder) {
@@ -129,7 +126,8 @@ const getYarnCacheFolder = ({ homeDirectory }) => {
   }
 
   console.log('resolving yarn cache folder')
-  return io.which('yarn', true)
+  return io
+    .which('yarn', true)
     .then(yarnPath => {
       console.log('yarn at "%s"', yarnPath)
 
@@ -158,7 +156,9 @@ const getYarnCacheFolder = ({ homeDirectory }) => {
       return _resolvedCacheFolder
     })
     .catch(() => {
-      core.warning('error while resolving yarn cache folder, using Linux default')
+      core.warning(
+        'error while resolving yarn cache folder, using Linux default'
+      )
       _resolvedCacheFolder = path.join(homeDirectory, '.cache', 'yarn')
       core.debug(`yarn cache folder: ${_resolvedCacheFolder}`)
       return _resolvedCacheFolder
@@ -173,14 +173,18 @@ const getCacheParams = ({
 }) => {
   const platformAndArch = api.utils.getPlatformAndArch()
   core.debug(`platform and arch ${platformAndArch}`)
-  return (useYarn ? getYarnCacheFolder({ homeDirectory }) : Promise.resolve(npmCacheFolder))
-    .then(inputPath => {
-      const primaryKey = `${useYarn ? 'yarn' : 'npm'}-${platformAndArch}-${lockHash}`
-      return {
-        inputPath,
-        primaryKey,
-      }
-    })
+  return (useYarn
+    ? getYarnCacheFolder({ homeDirectory })
+    : Promise.resolve(npmCacheFolder)
+  ).then(inputPath => {
+    const primaryKey = `${
+      useYarn ? 'yarn' : 'npm'
+    }-${platformAndArch}-${lockHash}`
+    return {
+      inputPath,
+      primaryKey
+    }
+  })
 }
 
 const installInOneFolder = ({ usePackageLock, workingDirectory }) => {
@@ -206,26 +210,25 @@ const installInOneFolder = ({ usePackageLock, workingDirectory }) => {
     homeDirectory,
     npmCacheFolder: NPM_CACHE_FOLDER,
     lockHash
-  })
-    .then(NPM_CACHE => {
-      const opts = {
-        useYarn: lockInfo.useYarn,
-        usePackageLock,
-        workingDirectory,
-        npmCacheFolder: NPM_CACHE_FOLDER
-      }
-      return api.utils.restoreCachedNpm(NPM_CACHE).then(npmCacheHit => {
-        console.log('npm cache hit', npmCacheHit)
-    
-        return api.utils.install(opts).then(() => {
-          if (npmCacheHit) {
-            return
-          }
-    
-          return api.utils.saveCachedNpm(NPM_CACHE)
-        })
+  }).then(NPM_CACHE => {
+    const opts = {
+      useYarn: lockInfo.useYarn,
+      usePackageLock,
+      workingDirectory,
+      npmCacheFolder: NPM_CACHE_FOLDER
+    }
+    return api.utils.restoreCachedNpm(NPM_CACHE).then(npmCacheHit => {
+      console.log('npm cache hit', npmCacheHit)
+
+      return api.utils.install(opts).then(() => {
+        if (npmCacheHit) {
+          return
+        }
+
+        return api.utils.saveCachedNpm(NPM_CACHE)
       })
     })
+  })
 }
 
 const npmInstallAction = async () => {
