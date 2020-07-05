@@ -122,6 +122,44 @@ const getLockFilename = usePackageLock => workingDirectory => {
   return result
 }
 
+let _resolvedCacheFolder;
+
+const getYarnCacheFolder = ({ homeDirectory }) => {
+  if (_resolvedCacheFolder) {
+    return _resolvedCacheFolder
+  }
+
+  console.log('resolving yarn cache folder')
+  return io.which('yarn', true)
+    .then(yarnPath => {
+      console.log('yarn at "%s"', yarnPath)
+
+      const options = {
+        stdout: data => {
+          _resolvedCacheFolder += data.toString()
+        },
+        stderr: () => {
+          throw new Error()
+        }
+      }
+      const args = ['cache', 'dir']
+      core.debug(
+        `yarn command: "${yarnPath}" ${args} ${JSON.stringify(options)}`
+      )
+      return exec.exec(quote(yarnPath), args, options)
+    })
+    .then(() => {
+      core.warning('resolved yarn cache folder:', _resolvedCacheFolder)
+      return _resolvedCacheFolder
+    })
+    .catch(() => {
+      core.warning('error while resolving yarn cache folder, using Linux default')
+      _resolvedCacheFolder = path.join(homeDirectory, '.cache', 'yarn')
+      core.warning('resolved yarn cache folder:', _resolvedCacheFolder)
+      return _resolvedCacheFolder
+    })
+}
+
 const getCacheParams = ({
   useYarn,
   homeDirectory,
@@ -130,15 +168,15 @@ const getCacheParams = ({
 }) => {
   const platformAndArch = api.utils.getPlatformAndArch()
   core.debug(`platform and arch ${platformAndArch}`)
-  const o = {}
-  if (useYarn) {
-    o.inputPath = path.join(homeDirectory, '.cache', 'yarn')
-    o.primaryKey = o.restoreKeys = `yarn-${platformAndArch}-${lockHash}`
-  } else {
-    o.inputPath = npmCacheFolder
-    o.primaryKey = o.restoreKeys = `npm-${platformAndArch}-${lockHash}`
-  }
-  return o
+  return (useYarn ? getYarnCacheFolder({ homeDirectory }) : Promise.resolve(npmCacheFolder))
+    .then(inputPath => {
+      const primaryKey = `${useYarn ? 'yarn' : 'npm'}-${platformAndArch}-${lockHash}`
+      return {
+        inputPath,
+        primaryKey,
+        restoreKeys: primaryKey
+      }
+    })
 }
 
 const installInOneFolder = ({ usePackageLock, workingDirectory }) => {
@@ -159,31 +197,31 @@ const installInOneFolder = ({ usePackageLock, workingDirectory }) => {
   const homeDirectory = os.homedir()
   const NPM_CACHE_FOLDER = path.join(homeDirectory, '.npm')
 
-  const NPM_CACHE = getCacheParams({
+  return getCacheParams({
     useYarn: lockInfo.useYarn,
     homeDirectory,
     npmCacheFolder: NPM_CACHE_FOLDER,
     lockHash
   })
-
-  const opts = {
-    useYarn: lockInfo.useYarn,
-    usePackageLock,
-    workingDirectory,
-    npmCacheFolder: NPM_CACHE_FOLDER
-  }
-
-  return api.utils.restoreCachedNpm(NPM_CACHE).then(npmCacheHit => {
-    console.log('npm cache hit', npmCacheHit)
-
-    return api.utils.install(opts).then(() => {
-      if (npmCacheHit) {
-        return
+    .then(NPM_CACHE => {
+      const opts = {
+        useYarn: lockInfo.useYarn,
+        usePackageLock,
+        workingDirectory,
+        npmCacheFolder: NPM_CACHE_FOLDER
       }
-
-      return api.utils.saveCachedNpm(NPM_CACHE)
+      return api.utils.restoreCachedNpm(NPM_CACHE).then(npmCacheHit => {
+        console.log('npm cache hit', npmCacheHit)
+    
+        return api.utils.install(opts).then(() => {
+          if (npmCacheHit) {
+            return
+          }
+    
+          return api.utils.saveCachedNpm(NPM_CACHE)
+        })
+      })
     })
-  })
 }
 
 const npmInstallAction = async () => {
