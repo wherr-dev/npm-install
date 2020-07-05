@@ -3,7 +3,7 @@ const core = require('@actions/core')
 const exec = require('@actions/exec')
 const io = require('@actions/io')
 const hasha = require('hasha')
-const cache = require('cache/lib/index')
+const cache = require('@actions/cache')
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
@@ -31,8 +31,7 @@ const restoreCachedNpm = npmCache => {
   console.log('trying to restore cached NPM modules')
   return cache.restoreCache(
     npmCache.inputPath,
-    npmCache.primaryKey,
-    npmCache.restoreKeys
+    npmCache.primaryKey
   )
 }
 
@@ -180,7 +179,6 @@ const getCacheParams = ({
       return {
         inputPath,
         primaryKey,
-        restoreKeys: primaryKey
       }
     })
 }
