@@ -1132,8 +1132,8 @@ const getYarnCacheFolder = ({ homeDirectory }) => {
       )
       return exec.exec(quote(yarnPath), args, options)
     })
-    .then(s => s.trim())
     .then(() => {
+      _resolvedCacheFolder = _resolvedCacheFolder.trim()
       if (_resolvedCacheFolder.length === 0) {
         throw new Error()
       }
