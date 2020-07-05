@@ -150,8 +150,9 @@ const getYarnCacheFolder = ({ homeDirectory }) => {
       )
       return exec.exec(quote(yarnPath), args, options)
     })
+    .then(s => s.trim())
     .then(() => {
-      if (!_resolvedCacheFolder || _resolvedCacheFolder.length === 0) {
+      if (_resolvedCacheFolder.length === 0) {
         throw new Error()
       }
       core.warning(`yarn cache folder: ${_resolvedCacheFolder}`)
