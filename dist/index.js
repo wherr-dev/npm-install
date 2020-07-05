@@ -1137,13 +1137,13 @@ const getYarnCacheFolder = ({ homeDirectory }) => {
       if (_resolvedCacheFolder.length === 0) {
         throw new Error()
       }
-      core.warning(`yarn cache folder: ${_resolvedCacheFolder}`)
+      core.debug(`yarn cache folder: ${_resolvedCacheFolder}`)
       return _resolvedCacheFolder
     })
     .catch(() => {
       core.warning('error while resolving yarn cache folder, using Linux default')
       _resolvedCacheFolder = path.join(homeDirectory, '.cache', 'yarn')
-      core.warning(`yarn cache folder: ${_resolvedCacheFolder}`)
+      core.debug(`yarn cache folder: ${_resolvedCacheFolder}`)
       return _resolvedCacheFolder
     })
 }
