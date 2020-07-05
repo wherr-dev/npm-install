@@ -1104,7 +1104,7 @@ const getLockFilename = usePackageLock => workingDirectory => {
   return result
 }
 
-let _resolvedCacheFolder;
+let _resolvedCacheFolder = '';
 
 const getYarnCacheFolder = ({ homeDirectory }) => {
   if (_resolvedCacheFolder) {
