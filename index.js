@@ -135,11 +135,13 @@ const getYarnCacheFolder = ({ homeDirectory }) => {
       console.log('yarn at "%s"', yarnPath)
 
       const options = {
-        stdout: data => {
-          _resolvedCacheFolder += data.toString()
-        },
-        stderr: () => {
-          throw new Error()
+        listeners: {
+          stdout: data => {
+            _resolvedCacheFolder += data.toString()
+          },
+          stderr: () => {
+            throw new Error()
+          }
         }
       }
       const args = ['cache', 'dir']
@@ -149,13 +151,16 @@ const getYarnCacheFolder = ({ homeDirectory }) => {
       return exec.exec(quote(yarnPath), args, options)
     })
     .then(() => {
-      core.warning('resolved yarn cache folder:', _resolvedCacheFolder)
+      if (!_resolvedCacheFolder || _resolvedCacheFolder.length === 0) {
+        throw new Error()
+      }
+      core.warning(`yarn cache folder: ${_resolvedCacheFolder}`)
       return _resolvedCacheFolder
     })
     .catch(() => {
       core.warning('error while resolving yarn cache folder, using Linux default')
       _resolvedCacheFolder = path.join(homeDirectory, '.cache', 'yarn')
-      core.warning('resolved yarn cache folder:', _resolvedCacheFolder)
+      core.warning(`yarn cache folder: ${_resolvedCacheFolder}`)
       return _resolvedCacheFolder
     })
 }
