@@ -2376,12 +2376,11 @@ const installInOneFolder = ({ usePackageLock, workingDirectory }) => {
     }
     return api.utils.restoreCachedNpm(NPM_CACHE).then(npmCacheHit => {
       console.log('npm cache hit', npmCacheHit)
+      if (npmCacheHit) {
+        return
+      }
 
       return api.utils.install(opts).then(() => {
-        if (npmCacheHit) {
-          return
-        }
-
         return api.utils.saveCachedNpm(NPM_CACHE)
       })
     })
